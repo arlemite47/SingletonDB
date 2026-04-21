@@ -1,11 +1,17 @@
 name: TonStats
-version: 1.2
+version: 1.0
 main: me.arlemite.stats.StatsPlugin
 api-version: 1.21
 
 commands:
   stats:
     description: Показать статистику игрока
+    usage: /stats <player>
   tonstats:
-    description: Управление плагином
+    description: Управление плагином TonStats
     permission: tonstats.admin
+
+permissions:
+  tonstats.admin:
+    description: Позволяет перезагружать конфиг плагина
+    default: op
