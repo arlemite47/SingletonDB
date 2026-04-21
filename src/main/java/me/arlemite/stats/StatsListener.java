@@ -10,7 +10,6 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public class StatsListener implements Listener {
 
-    // ConcurrentHashMap важен для потокобезопасности асинхронного чата Paper
     private static final ConcurrentHashMap<UUID, Integer> sessionMessages = new ConcurrentHashMap<>();
 
     @EventHandler
@@ -24,15 +23,19 @@ public class StatsListener implements Listener {
         UUID id = e.getPlayer().getUniqueId();
         int messages = sessionMessages.getOrDefault(id, 0);
         
-        // Собираем и отправляем в БД
         PlayerStatsData data = StatsManager.collect(e.getPlayer(), messages);
         StatsPlugin.get().getDatabase().savePlayerStatsAsync(data);
         
-        // Очищаем сессию, так как данные улетели в БД
         sessionMessages.remove(id);
     }
 
+    // Извлекает и обнуляет счетчик (для таймера)
     public static int popMessages(UUID uuid) {
         return sessionMessages.remove(uuid) != null ? sessionMessages.get(uuid) : 0;
+    }
+
+    // Просто смотрит счетчик (для команды /stats)
+    public static int peekMessages(UUID uuid) {
+        return sessionMessages.getOrDefault(uuid, 0);
     }
 }
