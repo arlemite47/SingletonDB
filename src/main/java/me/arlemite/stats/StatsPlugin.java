@@ -22,26 +22,26 @@ public class StatsPlugin extends JavaPlugin {
         
         getServer().getPluginManager().registerEvents(new StatsListener(), this);
 
-        // Авто-синхронизация онлайн игроков в БД
+        // Таймер теперь обычный (не Asynchronously), потому что Bukkit API запрещено трогать асинхронно.
         int intervalSeconds = getConfig().getInt("update-interval-seconds", 300);
-        Bukkit.getScheduler().runTaskTimerAsynchronously(this, () -> {
+        Bukkit.getScheduler().runTaskTimer(this, () -> {
             for (Player p : Bukkit.getOnlinePlayers()) {
                 int msgs = StatsListener.popMessages(p.getUniqueId());
                 PlayerStatsData data = StatsManager.collect(p, msgs);
-                database.savePlayerStatsAsync(data);
+                database.savePlayerStatsAsync(data); // База сохраняет в фоне
             }
         }, intervalSeconds * 20L, intervalSeconds * 20L);
     }
 
     @Override
     public void onDisable() {
-        // Финальное сохранение при выключении сервера
-        for (Player p : Bukkit.getOnlinePlayers()) {
-            int msgs = StatsListener.popMessages(p.getUniqueId());
-            PlayerStatsData data = StatsManager.collect(p, msgs);
-            database.savePlayerStatsAsync(data); // База закроется чуть позже
-        }
         if (database != null) {
+            // Финальное синхронное сохранение (Bukkit убивает асинхронные задачи при выключении)
+            for (Player p : Bukkit.getOnlinePlayers()) {
+                int msgs = StatsListener.popMessages(p.getUniqueId());
+                PlayerStatsData data = StatsManager.collect(p, msgs);
+                database.savePlayerStatsSync(data); 
+            }
             database.close();
         }
     }
