@@ -1,40 +1,51 @@
+// --- StatsCommand.java ---
 package me.arlemite.stats;
 
-import org.bukkit.Bukkit;
-import org.bukkit.Statistic;
-import org.bukkit.command.*;
+import org.bukkit.command.Command;
+import org.bukkit.command.CommandExecutor;
+import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 public class StatsCommand implements CommandExecutor {
-
     @Override
     public boolean onCommand(CommandSender sender, Command cmd, String label, String[] args) {
-
-        Player target;
+        String targetName;
 
         if (args.length == 0) {
-            if (!(sender instanceof Player)) return true;
-            target = (Player) sender;
-        } else {
-            target = Bukkit.getPlayer(args[0]);
-            if (target == null) {
-                sender.sendMessage("Игрок не найден");
+            if (!(sender instanceof Player)) {
+                sender.sendMessage("Укажите ник игрока.");
                 return true;
             }
+            targetName = sender.getName();
+        } else {
+            targetName = args[0];
         }
 
-        long playTime = target.getStatistic(Statistic.PLAY_ONE_MINUTE) / 20;
+        sender.sendMessage("§eЗагрузка статистики...");
 
-        sender.sendMessage("§6=== Статистика " + target.getName() + " ===");
-        sender.sendMessage("⏱️ Время: " + playTime + " сек");
-        sender.sendMessage("⚔️ PvP: " + target.getStatistic(Statistic.PLAYER_KILLS));
-        sender.sendMessage("🗡️ Мобы: " + target.getStatistic(Statistic.MOB_KILLS));
-        sender.sendMessage("💀 Смерти: " + target.getStatistic(Statistic.DEATHS));
-        sender.sendMessage("⛏️ Сломано: " + target.getStatistic(Statistic.MINE_BLOCK));
-        sender.sendMessage("🧱 Поставлено: " + target.getStatistic(Statistic.USE_ITEM));
-        sender.sendMessage("🔨 Крафт: " + target.getStatistic(Statistic.CRAFT_ITEM));
-        sender.sendMessage("🚶 Пройдено: " + target.getStatistic(Statistic.WALK_ONE_CM) / 100 + " м");
-        sender.sendMessage("🏊 Проплыто: " + target.getStatistic(Statistic.SWIM_ONE_CM) / 100 + " м");
+        StatsPlugin.get().getDatabase().getPlayerStats(targetName).thenAccept(data -> {
+            if (data == null) {
+                sender.sendMessage("§cИгрок не найден или статистика еще не собрана.");
+                return;
+            }
+
+            // Форматируем время
+            long hours = data.playtime / 3600;
+            long minutes = (data.playtime % 3600) / 60;
+
+            sender.sendMessage("§6=== Статистика " + data.name + " ===");
+            sender.sendMessage("⏱️ Игровое время: " + hours + " ч. " + minutes + " мин.");
+            sender.sendMessage("🏆 Достижения: " + data.advancements);
+            sender.sendMessage("⚔️ Убийства игроков: " + data.kills);
+            sender.sendMessage("🗡️ Убийства мобов: " + data.mobKills);
+            sender.sendMessage("💀 Смерти: " + data.deaths);
+            sender.sendMessage("⛏️ Сломано блоков: " + data.blocksBroken);
+            sender.sendMessage("🧱 Поставлено блоков: " + data.blocksPlaced);
+            sender.sendMessage("🔨 Создано предметов: " + data.itemsCrafted);
+            sender.sendMessage("🚶 Пройдено: " + data.walkedM + " м");
+            sender.sendMessage("🏊 Проплыто: " + data.swumM + " м");
+            sender.sendMessage("💬 Сообщения в чате: " + data.sessionMessages);
+        });
 
         return true;
     }
