@@ -55,44 +55,44 @@ public class Database {
         }
     }
 
-    // Сохранение статистики асинхронно
-    public void savePlayerStatsAsync(PlayerStatsData data) {
-        Bukkit.getScheduler().runTaskAsynchronously(StatsPlugin.get(), () -> {
-            String sql = """
-                INSERT INTO player_stats (uuid, name, playtime, advancements, kills, mob_kills, deaths, blocks_broken, blocks_placed, items_crafted, walked_m, swum_m, messages)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON DUPLICATE KEY UPDATE
-                name=VALUES(name), playtime=VALUES(playtime), advancements=VALUES(advancements),
-                kills=VALUES(kills), mob_kills=VALUES(mob_kills), deaths=VALUES(deaths),
-                blocks_broken=VALUES(blocks_broken), blocks_placed=VALUES(blocks_placed),
-                items_crafted=VALUES(items_crafted), walked_m=VALUES(walked_m),
-                swum_m=VALUES(swum_m), messages=messages + VALUES(messages);
-            """;
-            try (Connection conn = dataSource.getConnection();
-                 PreparedStatement ps = conn.prepareStatement(sql)) {
-                
-                ps.setString(1, data.uuid);
-                ps.setString(2, data.name);
-                ps.setLong(3, data.playtime);
-                ps.setInt(4, data.advancements);
-                ps.setInt(5, data.kills);
-                ps.setInt(6, data.mobKills);
-                ps.setInt(7, data.deaths);
-                ps.setInt(8, data.blocksBroken);
-                ps.setInt(9, data.blocksPlaced);
-                ps.setInt(10, data.itemsCrafted);
-                ps.setInt(11, data.walkedM);
-                ps.setInt(12, data.swumM);
-                ps.setInt(13, data.sessionMessages); // Прибавляем только новые сообщения
-                
-                ps.executeUpdate();
-            } catch (SQLException e) {
-                e.printStackTrace();
-            }
-        });
+    // Синхронное сохранение (основная логика)
+    public void savePlayerStatsSync(PlayerStatsData data) {
+        String sql = """
+            INSERT INTO player_stats (uuid, name, playtime, advancements, kills, mob_kills, deaths, blocks_broken, blocks_placed, items_crafted, walked_m, swum_m, messages)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ON DUPLICATE KEY UPDATE
+            name=VALUES(name), playtime=VALUES(playtime), advancements=VALUES(advancements),
+            kills=VALUES(kills), mob_kills=VALUES(mob_kills), deaths=VALUES(deaths),
+            blocks_broken=VALUES(blocks_broken), blocks_placed=VALUES(blocks_placed),
+            items_crafted=VALUES(items_crafted), walked_m=VALUES(walked_m),
+            swum_m=VALUES(swum_m), messages=messages + VALUES(messages);
+        """;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, data.uuid);
+            ps.setString(2, data.name);
+            ps.setLong(3, data.playtime);
+            ps.setInt(4, data.advancements);
+            ps.setInt(5, data.kills);
+            ps.setInt(6, data.mobKills);
+            ps.setInt(7, data.deaths);
+            ps.setInt(8, data.blocksBroken);
+            ps.setInt(9, data.blocksPlaced);
+            ps.setInt(10, data.itemsCrafted);
+            ps.setInt(11, data.walkedM);
+            ps.setInt(12, data.swumM);
+            ps.setInt(13, data.sessionMessages);
+            ps.executeUpdate();
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
-    // Получение из БД для оффлайн/онлайн игроков
+    // Асинхронная обертка для обычных сохранений (выход с сервера, таймер)
+    public void savePlayerStatsAsync(PlayerStatsData data) {
+        Bukkit.getScheduler().runTaskAsynchronously(StatsPlugin.get(), () -> savePlayerStatsSync(data));
+    }
+
     public CompletableFuture<PlayerStatsData> getPlayerStats(String name) {
         return CompletableFuture.supplyAsync(() -> {
             String sql = "SELECT * FROM player_stats WHERE name = ? LIMIT 1;";
@@ -113,7 +113,7 @@ public class Database {
                     data.itemsCrafted = rs.getInt("items_crafted");
                     data.walkedM = rs.getInt("walked_m");
                     data.swumM = rs.getInt("swum_m");
-                    data.sessionMessages = rs.getInt("messages"); // В БД лежит полная сумма
+                    data.sessionMessages = rs.getInt("messages");
                     return data;
                 }
             } catch (SQLException e) {
@@ -127,3 +127,4 @@ public class Database {
         if (dataSource != null) dataSource.close();
     }
 }
+
