@@ -1,13 +1,13 @@
 database:
-  enabled: true
-  type: "mysql" # mysql / postgres
-  host: "localhost"
+  host: "localhost" # Адрес БД (если на том же ВДС, оставь localhost)
   port: 3306
-  database: "minecraft"
-  user: "root"
-  password: "password"
+  database: "minecraft_stats" # Имя базы данных
+  user: "admin"
+  password: "твой_сложный_пароль"
 
-update-interval-seconds: 300
+# Как часто (в секундах) плагин будет принудительно выгружать 
+# статистику онлайн-игроков в базу данных.
+update-interval-seconds: 300 
 
 messages:
-  prefix: "&6[TonStats] "
+  prefix: "&6[TonStats] &r"
